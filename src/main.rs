@@ -1,9 +1,9 @@
-use std::{io, time::Duration};
+use std::{io, sync::mpsc, time::Duration};
 
 use anyhow::Result;
 use browser_backup_tool::{
     app::{AppMode, AppState},
-    backup::{BackupRequest, create_backup},
+    backup::{BackupMessage, BackupRequest, create_backup_with_progress},
     discovery::discover_browsers,
     process::browser_running,
     ui,
@@ -42,9 +42,28 @@ fn run_event_loop(
     app: &mut AppState,
 ) -> Result<()> {
     loop {
+        // Poll backup progress when a backup is running
+        if app.mode() == AppMode::BackupRunning {
+            while let Some(msg) = app.try_recv_progress() {
+                match msg {
+                    BackupMessage::Progress(p) => app.update_backup_progress(p),
+                    BackupMessage::Done(result) => {
+                        app.clear_progress();
+                        match result {
+                            Ok(r) => app.set_backup_result(format!(
+                                "备份完成: {}",
+                                r.backup_dir.display()
+                            )),
+                            Err(e) => app.set_backup_result(format!("备份失败: {e}")),
+                        }
+                    }
+                }
+            }
+        }
+
         terminal.draw(|frame| ui::render(frame, app))?;
 
-        if !event::poll(Duration::from_millis(200))? {
+        if !event::poll(Duration::from_millis(100))? {
             continue;
         }
 
@@ -73,23 +92,22 @@ fn run_event_loop(
                         }
 
                         let output_root = backup_output_root();
-                        app.set_backup_running(format!(
-                            "正在备份 {} / {}，请等待...",
-                            browser.display_name, profile.name
-                        ));
-                        terminal.draw(|frame| ui::render(frame, app))?;
+                        let name = browser.display_name.clone();
+                        let (tx, rx) = mpsc::channel();
 
-                        match create_backup(BackupRequest {
-                            browser: &browser,
-                            profile: &profile,
-                            output_root: &output_root,
-                        }) {
-                            Ok(result) => app.set_backup_result(format!(
-                                "备份完成: {}",
-                                result.backup_dir.display()
-                            )),
-                            Err(error) => app.set_backup_result(format!("备份失败: {error}")),
-                        }
+                        app.set_progress_rx(rx);
+                        app.set_backup_running(format!("正在备份 {name} / {}...", profile.name));
+
+                        std::thread::spawn(move || {
+                            create_backup_with_progress(
+                                BackupRequest {
+                                    browser: &browser,
+                                    profile: &profile,
+                                    output_root: &output_root,
+                                },
+                                tx,
+                            );
+                        });
                     } else {
                         app.set_backup_result("没有可备份的 Profile".to_string());
                     }

@@ -79,7 +79,7 @@ fn render_secondary_panel(frame: &mut Frame<'_>, app: &AppState, area: Rect) {
         }
         AppMode::ProfileDetail => ("Profile Detail", detail_lines(app)),
         AppMode::BackupConfirm => ("Backup", backup_lines(app)),
-        AppMode::BackupRunning => ("Backup Running", status_lines(app)),
+        AppMode::BackupRunning => ("Backup Running", running_lines(app)),
         AppMode::BackupResult => ("Backup Result", backup_result_lines(app)),
         AppMode::RestoreSelect => ("Restore", restore_lines(app)),
     };
@@ -169,6 +169,54 @@ fn backup_lines(app: &AppState) -> Vec<Line<'static>> {
 
 fn backup_result_lines(app: &AppState) -> Vec<Line<'static>> {
     status_lines(app)
+}
+
+fn running_lines(app: &AppState) -> Vec<Line<'static>> {
+    let mut lines = vec![
+        Line::from(
+            app.status_message()
+                .unwrap_or("正在备份...")
+                .to_string(),
+        ),
+        Line::from(""),
+    ];
+
+    let total = app.backup_total();
+    let processed = app.backup_processed();
+
+    if total > 0 {
+        let pct = (processed as f64 / total as f64 * 100.0).min(100.0);
+        let bar_width = 36usize;
+        let filled = (pct / 100.0 * bar_width as f64) as usize;
+        let bar = format!(
+            "{}{}",
+            "█".repeat(filled),
+            "░".repeat(bar_width - filled)
+        );
+        lines.push(Line::from(format!("[{bar}] {pct:.1}%")));
+        lines.push(Line::from(format!(
+            "{} / {}",
+            format_bytes(processed),
+            format_bytes(total)
+        )));
+    }
+
+    if let Some(file) = app.backup_current_file() {
+        lines.push(Line::from(""));
+        lines.push(Line::from(format!("当前文件: {file}")));
+    }
+
+    lines
+}
+
+fn format_bytes(bytes: u64) -> String {
+    if bytes < 1024 {
+        format!("{bytes} B")
+    } else if bytes < 1024 * 1024 {
+        format!("{:.1} KB", bytes as f64 / 1024.0)
+    } else {
+        format!("{:.1} MB", bytes as f64 / 1024.0 / 1024.0)
+    }
 }
 
 fn status_lines(app: &AppState) -> Vec<Line<'static>> {

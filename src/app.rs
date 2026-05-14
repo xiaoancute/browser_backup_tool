@@ -1,4 +1,6 @@
+use crate::backup::{BackupMessage, BackupProgress};
 use crate::discovery::{BrowserInstallation, BrowserProfile};
+use std::sync::mpsc;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AppFocus {
@@ -16,7 +18,7 @@ pub enum AppMode {
     RestoreSelect,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct AppState {
     browsers: Vec<BrowserInstallation>,
     selected_browser: usize,
@@ -24,6 +26,10 @@ pub struct AppState {
     focus: AppFocus,
     mode: AppMode,
     status_message: Option<String>,
+    backup_total: u64,
+    backup_processed: u64,
+    backup_current_file: Option<String>,
+    progress_rx: Option<mpsc::Receiver<BackupMessage>>,
 }
 
 impl AppState {
@@ -35,6 +41,10 @@ impl AppState {
             focus: AppFocus::Browser,
             mode: AppMode::BrowserList,
             status_message: None,
+            backup_total: 0,
+            backup_processed: 0,
+            backup_current_file: None,
+            progress_rx: None,
         }
     }
 
@@ -188,5 +198,46 @@ impl AppState {
     pub fn go_back(&mut self) {
         self.status_message = None;
         self.mode = AppMode::BrowserList;
+    }
+
+    pub fn backup_total(&self) -> u64 {
+        self.backup_total
+    }
+
+    pub fn backup_processed(&self) -> u64 {
+        self.backup_processed
+    }
+
+    pub fn backup_current_file(&self) -> Option<&str> {
+        self.backup_current_file.as_deref()
+    }
+
+    pub fn update_backup_progress(&mut self, progress: BackupProgress) {
+        self.backup_total = progress.total_bytes;
+        self.backup_processed = progress.processed_bytes;
+        self.backup_current_file = progress.current_file;
+    }
+
+    pub fn set_progress_rx(&mut self, rx: mpsc::Receiver<BackupMessage>) {
+        self.progress_rx = Some(rx);
+    }
+
+    pub fn try_recv_progress(&mut self) -> Option<BackupMessage> {
+        let rx = self.progress_rx.as_ref()?;
+        match rx.try_recv() {
+            Ok(msg) => Some(msg),
+            Err(mpsc::TryRecvError::Empty) => None,
+            Err(mpsc::TryRecvError::Disconnected) => {
+                self.progress_rx = None;
+                None
+            }
+        }
+    }
+
+    pub fn clear_progress(&mut self) {
+        self.backup_total = 0;
+        self.backup_processed = 0;
+        self.backup_current_file = None;
+        self.progress_rx = None;
     }
 }
