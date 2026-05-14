@@ -1,4 +1,4 @@
-use crate::app::{AppMode, AppState};
+use crate::app::{AppFocus, AppMode, AppState};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -56,15 +56,27 @@ fn render_browser_list(frame: &mut Frame<'_>, app: &AppState, area: Rect) {
             .collect()
     };
 
+    let title = if app.focus() == AppFocus::Browser {
+        "浏览器 *"
+    } else {
+        "浏览器"
+    };
     let widget = Paragraph::new(lines)
-        .block(Block::default().title("浏览器").borders(Borders::ALL))
+        .block(Block::default().title(title).borders(Borders::ALL))
         .wrap(Wrap { trim: true });
     frame.render_widget(widget, area);
 }
 
 fn render_secondary_panel(frame: &mut Frame<'_>, app: &AppState, area: Rect) {
     let (title, lines) = match app.mode() {
-        AppMode::BrowserList => ("Profile", profile_lines(app)),
+        AppMode::BrowserList => {
+            let title = if app.focus() == AppFocus::Profile {
+                "Profile *"
+            } else {
+                "Profile"
+            };
+            (title, profile_lines(app))
+        }
         AppMode::ProfileDetail => ("Profile Detail", detail_lines(app)),
         AppMode::BackupConfirm => ("Backup", backup_lines(app)),
         AppMode::BackupRunning => ("Backup Running", status_lines(app)),
@@ -186,5 +198,5 @@ fn restore_lines(app: &AppState) -> Vec<Line<'static>> {
 }
 
 fn footer_text() -> &'static str {
-    "↑↓ Profile  ←→ Browser  Enter Detail  b Backup  r Restore  Esc Back  q Quit"
+    "Tab Focus  ↑↓ Move  ←→ Browser  Enter Detail  b Backup  r Restore  q Quit"
 }

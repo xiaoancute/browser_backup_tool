@@ -1,4 +1,4 @@
-use browser_backup_tool::app::{AppMode, AppState};
+use browser_backup_tool::app::{AppFocus, AppMode, AppState};
 use browser_backup_tool::discovery::{BrowserId, BrowserInstallation, BrowserProfile};
 use std::path::PathBuf;
 
@@ -51,6 +51,35 @@ fn app_state_moves_selection_within_browser_and_profile_lists() {
     app.previous_browser();
     assert_eq!(app.selected_browser_index(), 0);
     assert_eq!(app.selected_profile_index(), 0);
+}
+
+#[test]
+fn up_down_navigation_targets_the_focused_list() {
+    let mut app = AppState::new(sample_browsers());
+
+    assert_eq!(app.focus(), AppFocus::Browser);
+
+    app.next_focused_item();
+    assert_eq!(app.selected_browser_index(), 1);
+    assert_eq!(app.selected_profile_index(), 0);
+
+    app.toggle_focus();
+    assert_eq!(app.focus(), AppFocus::Profile);
+
+    app.previous_browser();
+    app.next_focused_item();
+    assert_eq!(app.selected_browser_index(), 0);
+    assert_eq!(app.selected_profile_index(), 1);
+}
+
+#[test]
+fn tab_focus_toggle_is_ignored_outside_browser_list_mode() {
+    let mut app = AppState::new(sample_browsers());
+
+    app.open_detail();
+    app.toggle_focus();
+
+    assert_eq!(app.focus(), AppFocus::Browser);
 }
 
 #[test]

@@ -101,8 +101,9 @@ fn run_event_loop(
             },
             KeyCode::Char('b') => app.open_backup(),
             KeyCode::Char('r') => app.open_restore(),
-            KeyCode::Down => app.next_profile(),
-            KeyCode::Up => app.previous_profile(),
+            KeyCode::Tab => app.toggle_focus(),
+            KeyCode::Down => app.next_focused_item(),
+            KeyCode::Up => app.previous_focused_item(),
             KeyCode::Right => app.next_browser(),
             KeyCode::Left => app.previous_browser(),
             _ => {}

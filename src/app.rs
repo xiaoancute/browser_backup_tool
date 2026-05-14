@@ -1,6 +1,12 @@
 use crate::discovery::{BrowserInstallation, BrowserProfile};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AppFocus {
+    Browser,
+    Profile,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AppMode {
     BrowserList,
     ProfileDetail,
@@ -15,6 +21,7 @@ pub struct AppState {
     browsers: Vec<BrowserInstallation>,
     selected_browser: usize,
     selected_profile: usize,
+    focus: AppFocus,
     mode: AppMode,
     status_message: Option<String>,
 }
@@ -25,6 +32,7 @@ impl AppState {
             browsers,
             selected_browser: 0,
             selected_profile: 0,
+            focus: AppFocus::Browser,
             mode: AppMode::BrowserList,
             status_message: None,
         }
@@ -44,6 +52,10 @@ impl AppState {
 
     pub fn mode(&self) -> AppMode {
         self.mode
+    }
+
+    pub fn focus(&self) -> AppFocus {
+        self.focus
     }
 
     pub fn status_message(&self) -> Option<&str> {
@@ -100,6 +112,31 @@ impl AppState {
         }
 
         self.selected_profile = (self.selected_profile + 1) % browser.profiles.len();
+    }
+
+    pub fn next_focused_item(&mut self) {
+        match self.focus {
+            AppFocus::Browser => self.next_browser(),
+            AppFocus::Profile => self.next_profile(),
+        }
+    }
+
+    pub fn previous_focused_item(&mut self) {
+        match self.focus {
+            AppFocus::Browser => self.previous_browser(),
+            AppFocus::Profile => self.previous_profile(),
+        }
+    }
+
+    pub fn toggle_focus(&mut self) {
+        if self.mode != AppMode::BrowserList {
+            return;
+        }
+
+        self.focus = match self.focus {
+            AppFocus::Browser => AppFocus::Profile,
+            AppFocus::Profile => AppFocus::Browser,
+        };
     }
 
     pub fn previous_profile(&mut self) {
