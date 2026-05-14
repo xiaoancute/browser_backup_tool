@@ -5,6 +5,7 @@ use browser_backup_tool::{
     app::{AppMode, AppState},
     backup::{BackupRequest, create_backup},
     discovery::discover_browsers,
+    process::browser_running,
     ui,
 };
 use crossterm::{
@@ -63,7 +64,21 @@ fn run_event_loop(
                 AppMode::BrowserList => app.open_detail(),
                 AppMode::BackupConfirm => {
                     if let Some((browser, profile)) = selected_clone(app) {
+                        if browser_running(&browser.id) {
+                            app.set_backup_result(format!(
+                                "备份已阻止: {} 仍在运行。请先完全关闭浏览器再重试。",
+                                browser.display_name
+                            ));
+                            continue;
+                        }
+
                         let output_root = backup_output_root();
+                        app.set_backup_running(format!(
+                            "正在备份 {} / {}，请等待...",
+                            browser.display_name, profile.name
+                        ));
+                        terminal.draw(|frame| ui::render(frame, app))?;
+
                         match create_backup(BackupRequest {
                             browser: &browser,
                             profile: &profile,
@@ -79,8 +94,9 @@ fn run_event_loop(
                         app.set_backup_result("没有可备份的 Profile".to_string());
                     }
                 }
+                AppMode::BackupRunning => {}
                 AppMode::BackupResult | AppMode::ProfileDetail | AppMode::RestoreSelect => {
-                    app.go_back();
+                    app.go_back()
                 }
             },
             KeyCode::Char('b') => app.open_backup(),

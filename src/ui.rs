@@ -67,6 +67,7 @@ fn render_secondary_panel(frame: &mut Frame<'_>, app: &AppState, area: Rect) {
         AppMode::BrowserList => ("Profile", profile_lines(app)),
         AppMode::ProfileDetail => ("Profile Detail", detail_lines(app)),
         AppMode::BackupConfirm => ("Backup", backup_lines(app)),
+        AppMode::BackupRunning => ("Backup Running", status_lines(app)),
         AppMode::BackupResult => ("Backup Result", backup_result_lines(app)),
         AppMode::RestoreSelect => ("Restore", restore_lines(app)),
     };
@@ -155,6 +156,10 @@ fn backup_lines(app: &AppState) -> Vec<Line<'static>> {
 }
 
 fn backup_result_lines(app: &AppState) -> Vec<Line<'static>> {
+    status_lines(app)
+}
+
+fn status_lines(app: &AppState) -> Vec<Line<'static>> {
     let message = app.status_message().unwrap_or("没有备份结果");
 
     vec![

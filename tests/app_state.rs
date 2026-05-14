@@ -104,6 +104,16 @@ fn app_state_stores_backup_result_message_until_returning_to_list() {
 }
 
 #[test]
+fn app_state_can_show_backup_running_message() {
+    let mut app = AppState::new(sample_browsers());
+
+    app.set_backup_running("正在备份，请等待".to_string());
+
+    assert_eq!(app.mode(), AppMode::BackupRunning);
+    assert_eq!(app.status_message(), Some("正在备份，请等待"));
+}
+
+#[test]
 fn list_navigation_is_ignored_outside_browser_list_mode() {
     let mut app = AppState::new(sample_browsers());
 

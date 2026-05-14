@@ -5,6 +5,7 @@ pub enum AppMode {
     BrowserList,
     ProfileDetail,
     BackupConfirm,
+    BackupRunning,
     BackupResult,
     RestoreSelect,
 }
@@ -140,6 +141,11 @@ impl AppState {
     pub fn set_backup_result(&mut self, message: String) {
         self.status_message = Some(message);
         self.mode = AppMode::BackupResult;
+    }
+
+    pub fn set_backup_running(&mut self, message: String) {
+        self.status_message = Some(message);
+        self.mode = AppMode::BackupRunning;
     }
 
     pub fn go_back(&mut self) {
