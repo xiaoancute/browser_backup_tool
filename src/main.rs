@@ -3,7 +3,7 @@ use std::{io, sync::mpsc, time::Duration};
 use anyhow::Result;
 use browser_backup_tool::{
     app::{AppMode, AppState},
-    backup::{BackupMessage, BackupRequest, create_backup_with_progress},
+    backup::{BackupMessage, BackupRequest, create_backup_with_progress, log_error},
     discovery::discover_browsers,
     process::browser_running,
     ui,
@@ -54,7 +54,10 @@ fn run_event_loop(
                                 "备份完成: {}",
                                 r.backup_dir.display()
                             )),
-                            Err(e) => app.set_backup_result(format!("备份失败: {e}")),
+                            Err(e) => {
+                                log_error(&format!("备份失败: {e}"));
+                                app.set_backup_result(format!("备份失败: {e}"));
+                            }
                         }
                     }
                 }
@@ -84,10 +87,12 @@ fn run_event_loop(
                 AppMode::BackupConfirm => {
                     if let Some((browser, profile)) = selected_clone(app) {
                         if browser_running(&browser.id) {
-                            app.set_backup_result(format!(
-                                "备份已阻止: {} 仍在运行。请先完全关闭浏览器再重试。",
+                            let msg = format!(
+                                "备份已阻止: {} 仍在运行",
                                 browser.display_name
-                            ));
+                            );
+                            log_error(&msg);
+                            app.set_backup_result(format!("{msg}。请先完全关闭浏览器再重试。"));
                             continue;
                         }
 

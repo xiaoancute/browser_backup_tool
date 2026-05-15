@@ -3,12 +3,29 @@ use anyhow::{Context, Result};
 use flate2::{Compression, write::GzEncoder};
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::{self, File},
+    fs::{self, File, OpenOptions},
+    io::Write,
     path::{Path, PathBuf},
     sync::mpsc,
     time::{SystemTime, UNIX_EPOCH},
 };
 use tar::Builder;
+
+pub fn log_error(message: &str) {
+    let log_dir = dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("browser-backups");
+    let _ = fs::create_dir_all(&log_dir);
+
+    let log_path = log_dir.join("backup.log");
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&log_path) {
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let _ = writeln!(file, "[{ts}] {message}");
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct BackupProgress {
@@ -104,6 +121,12 @@ pub fn create_backup_with_progress(
     sender: mpsc::Sender<BackupMessage>,
 ) {
     let result = do_backup_with_progress(&request, &sender);
+    if let Err(e) = &result {
+        log_error(&format!(
+            "备份失败: browser={}, profile={}, error={e}",
+            request.browser.display_name, request.profile.name
+        ));
+    }
     let _ = sender.send(BackupMessage::Done(match &result {
         Ok(r) => Ok(r.clone()),
         Err(e) => Err(format!("{e}")),
