@@ -94,7 +94,8 @@ fn create_profile_archive(archive_path: &Path, profile_path: &Path) -> Result<()
     archive
         .append_dir_all("profile", profile_path)
         .with_context(|| format!("archive profile {}", profile_path.display()))?;
-    archive.finish()?;
+    let encoder = archive.into_inner()?;
+    encoder.finish()?;
     Ok(())
 }
 
