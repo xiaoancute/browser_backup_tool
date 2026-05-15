@@ -181,8 +181,8 @@ fn running_lines(app: &AppState) -> Vec<Line<'static>> {
         Line::from(""),
     ];
 
-    let total = app.backup_total();
-    let processed = app.backup_processed();
+    let total = app.backup_total_files();
+    let processed = app.backup_processed_files();
 
     if total > 0 {
         let pct = (processed as f64 / total as f64 * 100.0).min(100.0);
@@ -195,9 +195,8 @@ fn running_lines(app: &AppState) -> Vec<Line<'static>> {
         );
         lines.push(Line::from(format!("[{bar}] {pct:.1}%")));
         lines.push(Line::from(format!(
-            "{} / {}",
-            format_bytes(processed),
-            format_bytes(total)
+            "已归档 {} / {} 个文件",
+            processed, total
         )));
     }
 
@@ -207,16 +206,6 @@ fn running_lines(app: &AppState) -> Vec<Line<'static>> {
     }
 
     lines
-}
-
-fn format_bytes(bytes: u64) -> String {
-    if bytes < 1024 {
-        format!("{bytes} B")
-    } else if bytes < 1024 * 1024 {
-        format!("{:.1} KB", bytes as f64 / 1024.0)
-    } else {
-        format!("{:.1} MB", bytes as f64 / 1024.0 / 1024.0)
-    }
 }
 
 fn status_lines(app: &AppState) -> Vec<Line<'static>> {

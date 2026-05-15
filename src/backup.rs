@@ -29,8 +29,8 @@ pub fn log_error(message: &str) {
 
 #[derive(Clone, Debug)]
 pub struct BackupProgress {
-    pub total_bytes: u64,
-    pub processed_bytes: u64,
+    pub total_files: u64,
+    pub processed_files: u64,
     pub current_file: Option<String>,
 }
 
@@ -178,15 +178,15 @@ fn create_profile_archive_with_progress(
     profile_path: &Path,
     sender: &mpsc::Sender<BackupMessage>,
 ) -> Result<()> {
-    let total_bytes = dir_size(profile_path)?;
+    let total_files = count_files(profile_path)?;
 
     let archive_file = File::create(archive_path)
         .with_context(|| format!("create archive {}", archive_path.display()))?;
-    let encoder = GzEncoder::new(archive_file, Compression::default());
+    let encoder = GzEncoder::new(archive_file, Compression::fast());
     let mut archive = Builder::new(encoder);
 
     let mut processed: u64 = 0;
-    archive_dir_with_progress(&mut archive, Path::new("profile"), profile_path, sender, &mut processed, total_bytes)?;
+    archive_dir_with_progress(&mut archive, Path::new("profile"), profile_path, sender, &mut processed, total_files)?;
 
     let encoder = archive.into_inner()?;
     encoder.finish()?;
@@ -213,10 +213,10 @@ fn archive_dir_with_progress<W: std::io::Write>(
         if ft.is_dir() {
             archive_dir_with_progress(archive, &relative, &path, sender, processed, total)?;
         } else if ft.is_file() {
-            let size = entry.metadata()?.len();
+            *processed += 1;
             let _ = sender.send(BackupMessage::Progress(BackupProgress {
-                total_bytes: total,
-                processed_bytes: *processed,
+                total_files: total,
+                processed_files: *processed,
                 current_file: Some(relative.to_string_lossy().to_string()),
             }));
             let mut file = File::open(&path)
@@ -224,21 +224,20 @@ fn archive_dir_with_progress<W: std::io::Write>(
             archive
                 .append_file(&relative, &mut file)
                 .with_context(|| format!("archive file {}", path.display()))?;
-            *processed += size;
         }
     }
     Ok(())
 }
 
-fn dir_size(path: &Path) -> Result<u64> {
+fn count_files(path: &Path) -> Result<u64> {
     let mut total: u64 = 0;
     for entry in fs::read_dir(path)? {
         let entry = entry?;
         let ft = entry.file_type()?;
         if ft.is_dir() {
-            total += dir_size(&entry.path())?;
+            total += count_files(&entry.path())?;
         } else if ft.is_file() {
-            total += entry.metadata()?.len();
+            total += 1;
         }
     }
     Ok(total)

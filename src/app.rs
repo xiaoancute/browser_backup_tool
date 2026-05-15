@@ -26,8 +26,8 @@ pub struct AppState {
     focus: AppFocus,
     mode: AppMode,
     status_message: Option<String>,
-    backup_total: u64,
-    backup_processed: u64,
+    backup_total_files: u64,
+    backup_processed_files: u64,
     backup_current_file: Option<String>,
     progress_rx: Option<mpsc::Receiver<BackupMessage>>,
 }
@@ -41,8 +41,8 @@ impl AppState {
             focus: AppFocus::Browser,
             mode: AppMode::BrowserList,
             status_message: None,
-            backup_total: 0,
-            backup_processed: 0,
+            backup_total_files: 0,
+            backup_processed_files: 0,
             backup_current_file: None,
             progress_rx: None,
         }
@@ -200,12 +200,12 @@ impl AppState {
         self.mode = AppMode::BrowserList;
     }
 
-    pub fn backup_total(&self) -> u64 {
-        self.backup_total
+    pub fn backup_total_files(&self) -> u64 {
+        self.backup_total_files
     }
 
-    pub fn backup_processed(&self) -> u64 {
-        self.backup_processed
+    pub fn backup_processed_files(&self) -> u64 {
+        self.backup_processed_files
     }
 
     pub fn backup_current_file(&self) -> Option<&str> {
@@ -213,8 +213,8 @@ impl AppState {
     }
 
     pub fn update_backup_progress(&mut self, progress: BackupProgress) {
-        self.backup_total = progress.total_bytes;
-        self.backup_processed = progress.processed_bytes;
+        self.backup_total_files = progress.total_files;
+        self.backup_processed_files = progress.processed_files;
         self.backup_current_file = progress.current_file;
     }
 
@@ -235,8 +235,8 @@ impl AppState {
     }
 
     pub fn clear_progress(&mut self) {
-        self.backup_total = 0;
-        self.backup_processed = 0;
+        self.backup_total_files = 0;
+        self.backup_processed_files = 0;
         self.backup_current_file = None;
         self.progress_rx = None;
     }
